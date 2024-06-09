@@ -14,6 +14,7 @@ import os
 from dotenv import load_dotenv
 # Optional: add contact me email functionality (Day 60)
 from smtp import SMTPServer
+import logging
 
 
 '''
@@ -32,6 +33,9 @@ This will install the packages from the requirements.txt for this project.
 # Load environment variables from .env file
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
 ckeditor = CKEditor(app)
@@ -44,7 +48,12 @@ login_manager.init_app(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.get_or_404(User, user_id)
+    try:
+        user = db.get_or_404(User, user_id)
+        return user
+    except Exception as e:
+        logging.error(f"Error loading user '{user_id}': {e}")
+        return None
 
 
 # For adding profile images to the comment section
@@ -60,6 +69,7 @@ gravatar = Gravatar(app,
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///posts.db")
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
@@ -155,7 +165,7 @@ def register():
         db.session.commit()
         # This line will authenticate the user with Flask-Login
         login_user(new_user)
-        return redirect(url_for("get_all_posts"))
+        return redirect(url_for("landing_page"))
     return render_template("register.html", form=form, current_user=current_user)
 
 
@@ -177,7 +187,7 @@ def login():
             return redirect(url_for('login'))
         else:
             login_user(user)
-            return redirect(url_for('get_all_posts'))
+            return redirect(url_for('ganding_page'))
 
     return render_template("login.html", form=form, current_user=current_user)
 
@@ -185,14 +195,14 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('get_all_posts'))
+    return redirect(url_for('landing_page'))
 
 
 @app.route('/')
-def get_all_posts():
-    result = db.session.execute(db.select(BlogPost))
-    posts = result.scalars().all()
-    return render_template("index.html", all_posts=posts, current_user=current_user)
+def landing_page():
+    #result = db.session.execute(db.select(BlogPost))
+    #posts = result.scalars().all()
+    return render_template("landing.html", current_user=current_user)
 
 
 # Add a POST method to be able to post comments
@@ -233,7 +243,7 @@ def add_new_post():
         )
         db.session.add(new_post)
         db.session.commit()
-        return redirect(url_for("get_all_posts"))
+        return redirect(url_for("landing_page"))
     return render_template("make-post.html", form=form, current_user=current_user)
 
 
@@ -266,7 +276,7 @@ def delete_post(post_id):
     post_to_delete = db.get_or_404(BlogPost, post_id)
     db.session.delete(post_to_delete)
     db.session.commit()
-    return redirect(url_for('get_all_posts'))
+    return redirect(url_for('landing_page'))
 
 
 @app.route("/about")

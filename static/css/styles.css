@@ -10853,3 +10853,18 @@ header.masthead .post-heading .meta a {
     color: #ee6f57;
     text-align: center;
 }
+
+.larger-image {
+  width: 100%;
+  max-width: 400px; /* Adjust the max-width to the desired size */
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .offset-md-1 {
+    margin-left: -50px; /* Adjust this value to move the images further left and right */
+  }
+  .text-center {
+    padding: 0 50px; /* Adjust this value to add padding to the text column */
+  }
+}
