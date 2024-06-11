@@ -12,7 +12,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 import os
 from dotenv import load_dotenv
-# Optional: add contact me email functionality (Day 60)
 from smtp import SMTPServer
 import logging
 
@@ -200,10 +199,13 @@ def logout():
 
 @app.route('/')
 def landing_page():
-    #result = db.session.execute(db.select(BlogPost))
-    #posts = result.scalars().all()
     return render_template("landing.html", current_user=current_user)
 
+@app.route('/blog')
+def get_all_posts():
+    result = db.session.execute(db.select(BlogPost))
+    posts = result.scalars().all()
+    return render_template("index.html", all_posts=posts, current_user=current_user)
 
 # Add a POST method to be able to post comments
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
