@@ -1,3 +1,4 @@
+LOG_LEVEL='INFO'
 FLASK_KEY='YOUR_PASSWORD'
 DB_URI='sqlite:///posts.db'
 ROOT_USER_EMAIL='your-email@example.com'
