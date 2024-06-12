@@ -32,5 +32,4 @@ jobs:
 
     - name: Analyse the code with pylint
       run: |
-        source venv/bin/activate
-        pylint --fail-under=8 $(git ls-files '*.py')
+        source venv/bin/activate && pylint --fail-under=8 $(git ls-files '*.py')

@@ -1,17 +1,16 @@
-from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash, request
-from flask_login import login_user, current_user, logout_user
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
+import os
 import logging
+from datetime import date
+from functools import wraps
+from flask_login import LoginManager
+from flask import abort, render_template, redirect, url_for, flash, request
+from flask_login import login_user, current_user, logout_user
+from werkzeug.security import generate_password_hash, check_password_hash
 # Import modules and classes from local project 
 from app import app, db
 from models import User, BlogPost, Comment
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
-import os
 from smtp import SMTPServer
-
-
 '''
 Make sure the required packages are installed: 
 
@@ -32,6 +31,19 @@ ADMIN_EMAIL = os.environ.get("ROOT_USER_EMAIL")
 MAIL_ADDRESS = os.environ.get("EMAIL_KEY")
 MAIL_APP_PW = os.environ.get("PASSWORD_KEY")
 
+# Configure Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        user = db.get_or_404(User, user_id)
+        return user
+    except Exception as e:
+        logging.error(f"Error loading user '{user_id}': {e}")
+        return None
+
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -43,7 +55,6 @@ def admin_only(f):
             return abort(403)
         return f(*args, **kwargs)
     return decorated_function
-
 
 
 # Register new users into the User database
@@ -207,9 +218,12 @@ def contact():
         email = data["email"]
         phone_number = data["phone"]
         message = data["message"]
-        send_email(name=name, email=email, phone=phone_number, message=message)
-        logging.info("Contact email sent, sender=%s", email)
-        return render_template("contact.html", msg_sent=True)
+        try:
+            send_email(name=name, email=email, phone=phone_number, message=message)
+            logging.info("Contact email sent, sender=%s", email)
+            return render_template("contact.html", msg_sent=True)
+        except Exception as e:
+            logging.error("Contact email error, name=%s, sender=%s, error=%s", name, email, e)
     return render_template("contact.html", msg_sent=False)
 
 def send_email(name, email, phone, message):
