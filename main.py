@@ -122,13 +122,15 @@ class Comment(db.Model):
 with app.app_context():
     db.create_all()
 
+ADMIN_EMAIL = os.environ.get("ROOT_USER_EMAIL")
 
 # Create an admin-only decorator
 def admin_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # If id is not 1 then return abort with 403 error
-        if current_user.id != 1:
+        if current_user.email != ADMIN_EMAIL:
+            logging.warning(f"user {current_user.id} (EMAIL='{current_user.email}' tried to access admin_only endpoint (ROOT_EMAIL='{ADMIN_EMAIL}')")
             return abort(403)
         # Otherwise continue with the route function
         return f(*args, **kwargs)
@@ -141,7 +143,6 @@ def admin_only(f):
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-
         # Check if user email is already present in the database.
         result = db.session.execute(db.select(User).where(User.email == form.email.data))
         user = result.scalar()
@@ -164,6 +165,7 @@ def register():
         db.session.commit()
         # This line will authenticate the user with Flask-Login
         login_user(new_user)
+        logging.info(f"new user: [{form.name.data}, {form.email.data}]")
         return redirect(url_for("landing_page"))
     return render_template("register.html", form=form, current_user=current_user)
 
@@ -182,11 +184,12 @@ def login():
             return redirect(url_for('login'))
         # Password incorrect
         elif not check_password_hash(user.password, password):
-            flash('Password incorrect, please try again.')
+            flash('Email/password combination incorrect, please try again.')
             return redirect(url_for('login'))
         else:
             login_user(user)
-            return redirect(url_for('ganding_page'))
+            logging.info(f"user logged in: [{form.name.data}, {form.email.data}]")
+            return redirect(url_for('landing_page'))
 
     return render_template("login.html", form=form, current_user=current_user)
 
@@ -210,7 +213,11 @@ def get_all_posts():
 # Add a POST method to be able to post comments
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
-    requested_post = db.get_or_404(BlogPost, post_id)
+    try:
+        requested_post = db.get_or_404(BlogPost, post_id)
+    except Exception as e:
+        logging.error(f"Error loading post '{post_id}': {e}")
+        return None
     # Add the CommentForm to the route
     comment_form = CommentForm()
     # Only allow logged-in users to comment on posts
@@ -252,7 +259,11 @@ def add_new_post():
 # Use a decorator so only an admin user can edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 def edit_post(post_id):
-    post = db.get_or_404(BlogPost, post_id)
+    try:
+        post = db.get_or_404(BlogPost, post_id)
+    except Exception as e:
+        logging.error(f"Error loading post '{post_id}': {e}")
+        return None
     edit_form = CreatePostForm(
         title=post.title,
         subtitle=post.subtitle,
@@ -275,7 +286,11 @@ def edit_post(post_id):
 @app.route("/delete/<int:post_id>")
 @admin_only
 def delete_post(post_id):
-    post_to_delete = db.get_or_404(BlogPost, post_id)
+    try:
+        post_to_delete = db.get_or_404(BlogPost, post_id)
+    except Exception as e:
+        logging.error(f"Error loading post '{post_id}': {e}")
+        return None
     db.session.delete(post_to_delete)
     db.session.commit()
     return redirect(url_for('landing_page'))
@@ -293,7 +308,12 @@ MAIL_APP_PW = os.environ.get("PASSWORD_KEY")
 def contact():
     if request.method == "POST":
         data = request.form
-        send_email(data["name"], data["email"], data["phone"], data["message"])
+        name = data["name"]
+        email = data["email"]
+        phone_number = data["phone"]
+        message = data["message"]
+        send_email(name=name, email=email, phone=phone_number, message=message)
+        logging.info(f"contact email sent, sender={email}")
         return render_template("contact.html", msg_sent=True)
     return render_template("contact.html", msg_sent=False)
 

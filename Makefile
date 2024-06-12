@@ -22,8 +22,8 @@ docker-run-db:
 	@docker compose -f docker-compose.yml up -d database
 
 
-# Run the application on localhost
+# Run the application on localhost (http://127.0.0.1:5001)
 run:
-	python3 main.py
-
+	$(shell source .venv/bin/activate && python3 main.py)
+	
 .PHONY: env db-light docker-run-db install-dependencies run
